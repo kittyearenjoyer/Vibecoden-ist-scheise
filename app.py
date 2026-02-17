@@ -13,7 +13,7 @@ np.set_printoptions(suppress=True)
 # Modell laden (einmal cachen für Performance)
 @st.cache_resource
 def load_ai_model():
-    model = load_model("keras_Model.h5", compile=False)
+    model = load_model("keras_model.h5", compile=False)
     class_names = open("labels.txt", "r").readlines()
     return model, class_names
 
