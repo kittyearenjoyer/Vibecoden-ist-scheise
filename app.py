@@ -60,27 +60,21 @@ if uploaded_file is not None:
     confidence = float(prediction[0][index])
 
     # Bild speichern in Supabase Storage
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{timestamp}.png"
-    path = f"{class_name}/{selected_color_name}/{filename}"
-
-    buffer = BytesIO()
-    image.save(buffer, format="PNG")
-    buffer.seek(0)
-    supabase.storage.from_("images").upload(path, buffer, {"content-type":"image/png"})
-
-    # Public URL
-   buffer = BytesIO()
+  # Bild in Bytes konvertieren (RICHTIG)
+buffer = BytesIO()
 image.save(buffer, format="PNG")
 buffer.seek(0)
-
 file_bytes = buffer.getvalue()
 
+# Upload (nur EINMAL!)
 supabase.storage.from_("images").upload(
     path,
     file_bytes,
     {"content-type": "image/png"}
 )
+
+# Public URL erzeugen (WICHTIG!)
+url = supabase.storage.from_("images").get_public_url(path) 
 
     # Metadaten in DB speichern
     supabase.table("image_meta").insert({
