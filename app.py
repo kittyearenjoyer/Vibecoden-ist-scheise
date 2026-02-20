@@ -70,7 +70,11 @@ if uploaded_file is not None:
     supabase.storage.from_("images").upload(path, buffer, {"content-type":"image/png"})
 
     # Public URL
-    url = supabase.storage.from_("images").get_public_url(path).public_url
+    supabase.storage.from_("images").upload(
+    path,
+    buffer.getvalue(),
+    {"content-type": "image/png"}
+)
 
     # Metadaten in DB speichern
     supabase.table("image_meta").insert({
