@@ -25,9 +25,9 @@ model, class_names = load_ai_model()
 def connect_supabase():
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
-    return create_client(url, key)
+    return create_client(url, key), url
 
-supabase: Client = connect_supabase()
+supabase, supabase_url = connect_supabase()
 
 # ---------------- FARBAUSWAHL ----------------
 color_map = {
@@ -40,9 +40,10 @@ selected_color_hex = color_map[selected_color_name]
 
 # ---------------- UPLOAD + KLASSIFIKATION ----------------
 st.header("Bild hochladen")
-uploaded_file = st.file_uploader("Bild auswählen", type=["jpg","jpeg","png"])
+uploaded_file = st.file_uploader("Bild auswählen", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
+    # Bild laden
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, use_container_width=True)
 
@@ -50,52 +51,57 @@ if uploaded_file is not None:
     size = (224, 224)
     image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
     arr = np.asarray(image_resized)
-    normalized = (arr.astype(np.float32)/127.5) - 1
-    data = np.ndarray((1,224,224,3), dtype=np.float32)
+    normalized = (arr.astype(np.float32) / 127.5) - 1
+    data = np.ndarray((1, 224, 224, 3), dtype=np.float32)
     data[0] = normalized
 
+    # Vorhersage
     prediction = model.predict(data)
     index = np.argmax(prediction)
     class_name = class_names[index]
     confidence = float(prediction[0][index])
 
-    # Bild speichern in Supabase Storage
-  # Bild in Bytes konvertieren (RICHTIG)
-buffer = BytesIO()
-image.save(buffer, format="PNG")
-buffer.seek(0)
-file_bytes = buffer.getvalue()
+    # Dateiname & Pfad
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"{timestamp}.png"
+    path = f"{class_name}/{selected_color_name}/{filename}"
 
-# Upload (nur EINMAL!)
-supabase.storage.from_("images").upload(
-    path,
-    file_bytes,
-    {"content-type": "image/png"}
-)
+    # Bild in Bytes umwandeln (WICHTIG für Supabase!)
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    file_bytes = buffer.getvalue()
 
-# Public URL erzeugen (WICHTIG!)
-url = supabase.storage.from_("images").get_public_url(path) 
+    # Upload zu Supabase Storage (nur EINMAL!)
+    supabase.storage.from_("images").upload(
+        path,
+        file_bytes,
+        {"content-type": "image/png"}
+    )
 
-    # Metadaten in DB speichern
+    # Public URL generieren
+    public_url = f"{supabase_url}/storage/v1/object/public/images/{path}"
+
+    # Metadaten in Datenbank speichern
     supabase.table("image_meta").insert({
         "filename": filename,
         "class": class_name,
         "color": selected_color_name,
-        "upload_time": datetime.now(),
-        "url": url
+        "upload_time": datetime.now().isoformat(),
+        "url": public_url
     }).execute()
 
+    # Ausgabe
     st.markdown(f"""
     <h2 style="color:{selected_color_hex};">Klasse: {class_name}</h2>
     <p>Sicherheit: {confidence:.2%}</p>
-    <p>Gespeichert unter: <a href='{url}' target='_blank'>{url}</a></p>
+    <p>Gespeichert unter: <a href='{public_url}' target='_blank'>{public_url}</a></p>
     """, unsafe_allow_html=True)
 
 # ---------------- BILDER ANZEIGEN ----------------
 st.header("Gespeicherte Bilder durchsuchen")
 
-# Filter
-meta = supabase.table("image_meta").select("*").execute().data
+response = supabase.table("image_meta").select("*").execute()
+meta = response.data if response.data else []
 
 if meta:
     classes = sorted(set(e["class"] for e in meta))
@@ -112,7 +118,7 @@ if meta:
 
     cols = st.columns(4)
     for i, entry in enumerate(filtered):
-        with cols[i%4]:
+        with cols[i % 4]:
             st.image(entry["url"], caption=f"{entry['class']} | {entry['color']}")
 else:
     st.info("Noch keine Bilder gespeichert.")
