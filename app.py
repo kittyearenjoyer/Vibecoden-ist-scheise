@@ -70,9 +70,15 @@ if uploaded_file is not None:
     supabase.storage.from_("images").upload(path, buffer, {"content-type":"image/png"})
 
     # Public URL
-    supabase.storage.from_("images").upload(
+   buffer = BytesIO()
+image.save(buffer, format="PNG")
+buffer.seek(0)
+
+file_bytes = buffer.getvalue()
+
+supabase.storage.from_("images").upload(
     path,
-    buffer.getvalue(),
+    file_bytes,
     {"content-type": "image/png"}
 )
 
