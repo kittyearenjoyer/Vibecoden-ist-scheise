@@ -152,10 +152,25 @@ if uploaded_file is not None:
 
     # Ausgabe
     st.markdown(f"""
-    <h2 style="color:{selected_color_hex};">Klasse: {class_name}</h2>
-    <p>Sicherheit: {confidence:.2%}</p>
-    <p>Gespeichert unter: <a href='{public_url}' target='_blank'>{public_url}</a></p>
-    """, unsafe_allow_html=True)
+<div class="card">
+
+<h2 style="color:{selected_color_hex};">
+🧠 Klasse: {class_name}
+</h2>
+
+<p><b>Confidence:</b> {confidence:.2%}</p>
+
+<div class="confbar">
+<div class="confbar-fill" style="width:{confidence*100}%"></div>
+</div>
+
+<br>
+
+<a href="{public_url}" target="_blank">🔗 Bild öffnen</a>
+
+</div>
+""", unsafe_allow_html=True)
+
 
 # ---------------- BILDER ANZEIGEN ----------------
 st.header("Gespeicherte Bilder durchsuchen")
@@ -177,8 +192,19 @@ if meta:
     ]
 
     cols = st.columns(4)
-    for i, entry in enumerate(filtered):
-        with cols[i % 4]:
-            st.image(entry["url"], caption=f"{entry['class']} | {entry['color']}")
+
+for i, entry in enumerate(filtered):
+    with cols[i % 4]:
+
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+
+        st.image(entry["url"], use_container_width=True)
+
+        st.markdown(
+            f"<center><b>{entry['class']}</b><br>{entry['color']}</center>",
+            unsafe_allow_html=True
+        )
+
+        st.markdown('</div>', unsafe_allow_html=True)
 else:
     st.info("Noch keine Bilder gespeichert.")
