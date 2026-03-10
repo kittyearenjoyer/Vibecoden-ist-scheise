@@ -8,11 +8,12 @@ from supabase import create_client, Client
 
 st.set_page_config(page_title="KI Bilddatenbank", layout="wide")
 
+# ---------------- DESIGN ----------------
 st.markdown("""
 <style>
 
 .main {
-    background-color: #FF0000;
+    background-color: #0e1117;
 }
 
 h1, h2, h3 {
@@ -30,22 +31,20 @@ h1, h2, h3 {
     border: none;
 }
 
-.stSelectbox div[data-baseweb="select"] {
-    border-radius: 10px;
-}
-
 .upload-box {
     border: 2px dashed #555;
     padding: 25px;
     border-radius: 15px;
     text-align: center;
+    margin-bottom: 20px;
 }
 
 .card {
     background: #1c1f26;
-    padding: 10px;
+    padding: 12px;
     border-radius: 12px;
     box-shadow: 0px 4px 12px rgba(0,0,0,0.4);
+    margin-bottom: 15px;
 }
 
 .card img {
@@ -67,7 +66,17 @@ h1, h2, h3 {
 </style>
 """, unsafe_allow_html=True)
 
-st.title("KI Bildklassifikation + Supabase Storage")
+st.title("🧠 KI Bildklassifikation + Supabase Storage")
+
+st.markdown(
+"""
+Upload ein Bild → KI erkennt das Objekt → Bild wird automatisch gespeichert.
+
+- 🤖 Klassifikation mit Keras  
+- ☁️ Speicherung in Supabase  
+- 🖼️ Galerie mit Filter
+"""
+)
 
 # ---------------- AI MODEL ----------------
 np.set_printoptions(suppress=True)
@@ -95,53 +104,54 @@ color_map = {
     "Grün": "#00aa00",
     "Orange": "#ff8800"
 }
+
 selected_color_name = st.selectbox("Farbe wählen", list(color_map.keys()))
 selected_color_hex = color_map[selected_color_name]
 
-# ---------------- UPLOAD + KLASSIFIKATION ----------------
-st.header("Bild hochladen")
-uploaded_file = st.file_uploader("Bild auswählen", type=["jpg", "jpeg", "png"])
+# ---------------- UPLOAD ----------------
+st.markdown("## 📤 Bild hochladen")
+st.markdown('<div class="upload-box">Ziehe ein Bild hier hinein oder wähle eine Datei</div>', unsafe_allow_html=True)
 
+uploaded_file = st.file_uploader("", type=["jpg", "jpeg", "png"])
+
+# ---------------- KLASSIFIKATION ----------------
 if uploaded_file is not None:
-    # Bild laden
+
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, use_container_width=True)
 
-    # Modellvorbereitung
     size = (224, 224)
     image_resized = ImageOps.fit(image, size, Image.Resampling.LANCZOS)
+
     arr = np.asarray(image_resized)
     normalized = (arr.astype(np.float32) / 127.5) - 1
+
     data = np.ndarray((1, 224, 224, 3), dtype=np.float32)
     data[0] = normalized
 
-    # Vorhersage
     prediction = model.predict(data)
     index = np.argmax(prediction)
+
     class_name = class_names[index]
     confidence = float(prediction[0][index])
 
-    # Dateiname & Pfad
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{timestamp}.png"
+
     path = f"{class_name}/{selected_color_name}/{filename}"
 
-    # Bild in Bytes umwandeln (WICHTIG für Supabase!)
     buffer = BytesIO()
     image.save(buffer, format="PNG")
     file_bytes = buffer.getvalue()
 
-    # Upload zu Supabase Storage (nur EINMAL!)
     supabase.storage.from_("images").upload(
         path,
         file_bytes,
         {"content-type": "image/png"}
     )
 
-    # Public URL generieren
     public_url = f"{supabase_url}/storage/v1/object/public/images/{path}"
 
-    # Metadaten in Datenbank speichern
     supabase.table("image_meta").insert({
         "filename": filename,
         "class": class_name,
@@ -150,35 +160,34 @@ if uploaded_file is not None:
         "url": public_url
     }).execute()
 
-    # Ausgabe
     st.markdown(f"""
-<div class="card">
+    <div class="card">
 
-<h2 style="color:{selected_color_hex};">
-🧠 Klasse: {class_name}
-</h2>
+    <h2 style="color:{selected_color_hex};">
+    🧠 Klasse: {class_name}
+    </h2>
 
-<p><b>Confidence:</b> {confidence:.2%}</p>
+    <p><b>Confidence:</b> {confidence:.2%}</p>
 
-<div class="confbar">
-<div class="confbar-fill" style="width:{confidence*100}%"></div>
-</div>
+    <div class="confbar">
+    <div class="confbar-fill" style="width:{confidence*100}%"></div>
+    </div>
 
-<br>
+    <br>
 
-<a href="{public_url}" target="_blank">🔗 Bild öffnen</a>
+    <a href="{public_url}" target="_blank">🔗 Bild öffnen</a>
 
-</div>
-""", unsafe_allow_html=True)
+    </div>
+    """, unsafe_allow_html=True)
 
-
-# ---------------- BILDER ANZEIGEN ----------------
-st.header("Gespeicherte Bilder durchsuchen")
+# ---------------- GALERIE ----------------
+st.header("🖼️ Gespeicherte Bilder durchsuchen")
 
 response = supabase.table("image_meta").select("*").execute()
 meta = response.data if response.data else []
 
 if meta:
+
     classes = sorted(set(e["class"] for e in meta))
     colors = sorted(set(e["color"] for e in meta))
 
@@ -193,18 +202,20 @@ if meta:
 
     cols = st.columns(4)
 
-for i, entry in enumerate(filtered):
-    with cols[i % 4]:
+    for i, entry in enumerate(filtered):
 
-        st.markdown('<div class="card">', unsafe_allow_html=True)
+        with cols[i % 4]:
 
-        st.image(entry["url"], use_container_width=True)
+            st.markdown('<div class="card">', unsafe_allow_html=True)
 
-        st.markdown(
-            f"<center><b>{entry['class']}</b><br>{entry['color']}</center>",
-            unsafe_allow_html=True
-        )
+            st.image(entry["url"], use_container_width=True)
 
-        st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(
+                f"<center><b>{entry['class']}</b><br>{entry['color']}</center>",
+                unsafe_allow_html=True
+            )
+
+            st.markdown('</div>', unsafe_allow_html=True)
+
 else:
     st.info("Noch keine Bilder gespeichert.")
