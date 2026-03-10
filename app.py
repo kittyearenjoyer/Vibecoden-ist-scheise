@@ -7,6 +7,66 @@ from datetime import datetime
 from supabase import create_client, Client
 
 st.set_page_config(page_title="KI Bilddatenbank", layout="wide")
+
+st.markdown("""
+<style>
+
+.main {
+    background-color: #0e1117;
+}
+
+h1, h2, h3 {
+    font-family: "Segoe UI", sans-serif;
+}
+
+.block-container {
+    padding-top: 2rem;
+}
+
+.stButton>button {
+    border-radius: 10px;
+    background: linear-gradient(90deg,#ff4b4b,#ff8800);
+    color: white;
+    border: none;
+}
+
+.stSelectbox div[data-baseweb="select"] {
+    border-radius: 10px;
+}
+
+.upload-box {
+    border: 2px dashed #555;
+    padding: 25px;
+    border-radius: 15px;
+    text-align: center;
+}
+
+.card {
+    background: #1c1f26;
+    padding: 10px;
+    border-radius: 12px;
+    box-shadow: 0px 4px 12px rgba(0,0,0,0.4);
+}
+
+.card img {
+    border-radius: 10px;
+}
+
+.confbar {
+    height: 8px;
+    border-radius: 10px;
+    background: #333;
+}
+
+.confbar-fill {
+    height: 8px;
+    border-radius: 10px;
+    background: linear-gradient(90deg,#00ff9d,#00bfff);
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 st.title("KI Bildklassifikation + Supabase Storage")
 
 # ---------------- AI MODEL ----------------
