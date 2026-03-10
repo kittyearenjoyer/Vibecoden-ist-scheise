@@ -83,7 +83,7 @@ margin-top: 5px;
 """, unsafe_allow_html=True)
 
 # ---------------- HEADER ----------------
-st.markdown("# 🤖 AI Image Lab")
+st.markdown("# Fundbüro")
 st.markdown("<div class='subtitle'>Upload images • classify with AI • store automatically</div>", unsafe_allow_html=True)
 
 # ---------------- AI MODEL ----------------
