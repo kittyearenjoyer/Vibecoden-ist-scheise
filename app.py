@@ -6,77 +6,85 @@ from io import BytesIO
 from datetime import datetime
 from supabase import create_client, Client
 
-st.set_page_config(page_title="KI Bilddatenbank", layout="wide")
+st.set_page_config(page_title="AI Image Lab", layout="wide")
 
-# ---------------- DESIGN ----------------
+# ---------------- STYLE ----------------
 st.markdown("""
 <style>
 
-.main {
-    background-color: #0e1117;
-}
-
-h1, h2, h3 {
-    font-family: "Segoe UI", sans-serif;
+html, body {
+background-color: #f7f9fc;
 }
 
 .block-container {
-    padding-top: 2rem;
+padding-top: 2rem;
+max-width: 1200px;
 }
 
-.stButton>button {
-    border-radius: 10px;
-    background: linear-gradient(90deg,#ff4b4b,#ff8800);
-    color: white;
-    border: none;
+h1 {
+font-size: 48px;
+font-weight: 700;
 }
 
-.upload-box {
-    border: 2px dashed #555;
-    padding: 25px;
-    border-radius: 15px;
-    text-align: center;
-    margin-bottom: 20px;
+.subtitle {
+color: #6b7280;
+margin-bottom: 30px;
 }
 
-.card {
-    background: #1c1f26;
-    padding: 12px;
-    border-radius: 12px;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.4);
-    margin-bottom: 15px;
+.glass {
+background: white;
+padding: 25px;
+border-radius: 20px;
+box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+margin-bottom: 25px;
 }
 
-.card img {
-    border-radius: 10px;
+.upload-area {
+border: 2px dashed #d1d5db;
+padding: 40px;
+border-radius: 20px;
+text-align: center;
+background: #fafafa;
 }
 
-.confbar {
-    height: 8px;
-    border-radius: 10px;
-    background: #333;
+.gallery-card {
+background: white;
+padding: 10px;
+border-radius: 16px;
+box-shadow: 0 4px 14px rgba(0,0,0,0.05);
 }
 
-.confbar-fill {
-    height: 8px;
-    border-radius: 10px;
-    background: linear-gradient(90deg,#00ff9d,#00bfff);
+.gallery-card img {
+border-radius: 12px;
+}
+
+.progress {
+height: 10px;
+border-radius: 10px;
+background: #e5e7eb;
+}
+
+.progress-fill {
+height: 10px;
+border-radius: 10px;
+background: #6366f1;
+}
+
+.tag {
+background: #eef2ff;
+padding: 4px 10px;
+border-radius: 20px;
+font-size: 12px;
+display: inline-block;
+margin-top: 5px;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🧠 KI Bildklassifikation + Supabase Storage")
-
-st.markdown(
-"""
-Upload ein Bild → KI erkennt das Objekt → Bild wird automatisch gespeichert.
-
-- 🤖 Klassifikation mit Keras  
-- ☁️ Speicherung in Supabase  
-- 🖼️ Galerie mit Filter
-"""
-)
+# ---------------- HEADER ----------------
+st.markdown("# 🤖 AI Image Lab")
+st.markdown("<div class='subtitle'>Upload images • classify with AI • store automatically</div>", unsafe_allow_html=True)
 
 # ---------------- AI MODEL ----------------
 np.set_printoptions(suppress=True)
@@ -89,7 +97,7 @@ def load_ai_model():
 
 model, class_names = load_ai_model()
 
-# ---------------- SUPABASE CLIENT ----------------
+# ---------------- SUPABASE ----------------
 @st.cache_resource
 def connect_supabase():
     url = st.secrets["SUPABASE_URL"]
@@ -98,23 +106,28 @@ def connect_supabase():
 
 supabase, supabase_url = connect_supabase()
 
-# ---------------- FARBAUSWAHL ----------------
+# ---------------- COLOR ----------------
 color_map = {
-    "Rot": "#ff0000",
-    "Grün": "#00aa00",
-    "Orange": "#ff8800"
+    "Rot": "#ef4444",
+    "Grün": "#22c55e",
+    "Orange": "#f97316"
 }
 
-selected_color_name = st.selectbox("Farbe wählen", list(color_map.keys()))
+selected_color_name = st.selectbox("Farbe auswählen", list(color_map.keys()))
 selected_color_hex = color_map[selected_color_name]
 
 # ---------------- UPLOAD ----------------
-st.markdown("## 📤 Bild hochladen")
-st.markdown('<div class="upload-box">Ziehe ein Bild hier hinein oder wähle eine Datei</div>', unsafe_allow_html=True)
+st.markdown("<div class='glass'>", unsafe_allow_html=True)
+
+st.markdown("### Bild hochladen")
+
+st.markdown("<div class='upload-area'>Ziehe ein Bild hier hinein oder wähle eine Datei</div>", unsafe_allow_html=True)
 
 uploaded_file = st.file_uploader("", type=["jpg", "jpeg", "png"])
 
-# ---------------- KLASSIFIKATION ----------------
+st.markdown("</div>", unsafe_allow_html=True)
+
+# ---------------- CLASSIFICATION ----------------
 if uploaded_file is not None:
 
     image = Image.open(uploaded_file).convert("RGB")
@@ -160,28 +173,24 @@ if uploaded_file is not None:
         "url": public_url
     }).execute()
 
+    st.markdown("<div class='glass'>", unsafe_allow_html=True)
+
+    st.markdown(f"### Ergebnis: {class_name}")
+
     st.markdown(f"""
-    <div class="card">
-
-    <h2 style="color:{selected_color_hex};">
-    🧠 Klasse: {class_name}
-    </h2>
-
-    <p><b>Confidence:</b> {confidence:.2%}</p>
-
-    <div class="confbar">
-    <div class="confbar-fill" style="width:{confidence*100}%"></div>
-    </div>
-
-    <br>
-
-    <a href="{public_url}" target="_blank">🔗 Bild öffnen</a>
-
+    <div class="progress">
+    <div class="progress-fill" style="width:{confidence*100}%"></div>
     </div>
     """, unsafe_allow_html=True)
 
-# ---------------- GALERIE ----------------
-st.header("🖼️ Gespeicherte Bilder durchsuchen")
+    st.markdown(f"Confidence: **{confidence:.2%}**")
+
+    st.markdown(f"<a href='{public_url}' target='_blank'>Bild öffnen</a>", unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# ---------------- GALLERY ----------------
+st.markdown("## Galerie")
 
 response = supabase.table("image_meta").select("*").execute()
 meta = response.data if response.data else []
@@ -191,8 +200,13 @@ if meta:
     classes = sorted(set(e["class"] for e in meta))
     colors = sorted(set(e["color"] for e in meta))
 
-    filter_class = st.selectbox("Nach Klasse filtern", ["Alle"] + classes)
-    filter_color = st.selectbox("Nach Farbe filtern", ["Alle"] + colors)
+    col1, col2 = st.columns(2)
+
+    with col1:
+        filter_class = st.selectbox("Klasse", ["Alle"] + classes)
+
+    with col2:
+        filter_color = st.selectbox("Farbe", ["Alle"] + colors)
 
     filtered = [
         e for e in meta
@@ -200,22 +214,27 @@ if meta:
         and (filter_color == "Alle" or e["color"] == filter_color)
     ]
 
-    cols = st.columns(4)
+    cols = st.columns(5)
 
     for i, entry in enumerate(filtered):
 
-        with cols[i % 4]:
+        with cols[i % 5]:
 
-            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.markdown("<div class='gallery-card'>", unsafe_allow_html=True)
 
             st.image(entry["url"], use_container_width=True)
 
             st.markdown(
-                f"<center><b>{entry['class']}</b><br>{entry['color']}</center>",
+                f"<div class='tag'>{entry['class']}</div>",
                 unsafe_allow_html=True
             )
 
-            st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown(
+                f"<div class='tag'>{entry['color']}</div>",
+                unsafe_allow_html=True
+            )
+
+            st.markdown("</div>", unsafe_allow_html=True)
 
 else:
     st.info("Noch keine Bilder gespeichert.")
