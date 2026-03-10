@@ -12,7 +12,7 @@ st.markdown("""
 <style>
 
 .main {
-    background-color: #000080;
+    background-color: #FF0000;
 }
 
 h1, h2, h3 {
